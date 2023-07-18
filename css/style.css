@@ -1,0 +1,36 @@
+form {
+  display: flex;
+  flex-direction: column;
+  margin-top: 50px;
+}
+
+input, textarea {
+  padding: 10px;
+  margin: 11px 0 0 5px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  width: 300px;
+  font-size: 16px;
+}
+
+textarea {
+  width: 25%;
+  height: 168px;
+  font-size: 22px;
+}
+
+#get_calculations{
+  margin-top: 2%;
+}
+
+#amount{
+  height: 80px;
+  font-size: 40px;
+}
+
+.result {
+  border-top: 1px solid #ccc;
+  padding-top: 10px;
+  margin-top: 50px;
+  font-size: 40px;
+}
