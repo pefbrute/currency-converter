@@ -26,69 +26,53 @@ ids.forEach((id) => {
 
 form.addEventListener("submit", makeCalculations);
 
-function getCheckboxInfo() {
-  let checkBoxesInfo = {};
-
-  checkBoxesInfo.deliveryTimeCheckBox = document.getElementById(
-    "delivery-time-checkbox"
-  ).checked
-    ? "\n\nМы доставим рупии в течении 1-2 часов"
-    : "";
-
-  checkBoxesInfo.onlineExchangeCheckBox = document.getElementById(
-    "online-exchange-checkbox"
-  ).checked
-    ? "онлайн обмен через оператора"
-    : "";
-
-  checkBoxesInfo.atmCheckBox = document.getElementById("atm-checkbox").checked
-    ? "АТМ"
-    : "";
-
-  checkBoxesInfo.secondPartnerCheckBox = document.getElementById(
-    "second-partner-checkbox"
-  ).checked
-    ? "партнёр 2"
-    : "";
-
-  return checkBoxesInfo;
+function getCheckboxState(id, message) {
+  return document.getElementById(id).checked ? message : "";
 }
 
-function calculateLimitValues(rupees, exchangeRates, Rupees_to_Currency = false) {
-  const low = 5000 * Math.floor(rupees / 5000);
-  const high = 5000 * Math.ceil(rupees / 5000);
-
-  const lowResult = calculateRateAndEquivalentValue(low, exchangeRates, Rupees_to_Currency);
-  const highResult = calculateRateAndEquivalentValue(high, exchangeRates, Rupees_to_Currency);
-
+function getCheckboxInfo() {
   return {
-    low: { rupees: low, currencyAmount: lowResult.equivalentValue, rate: lowResult.rate },
-    high: { rupees: high, currencyAmount: highResult.equivalentValue, rate: highResult.rate },
+    deliveryTimeCheckBox: getCheckboxState("delivery-time-checkbox", "\n\nМы доставим рупии в течении 1-2 часов"),
+    onlineExchangeCheckBox: getCheckboxState("online-exchange-checkbox", "онлайн обмен через оператора"),
+    atmCheckBox: getCheckboxState("atm-checkbox", "АТМ"),
+    secondPartnerCheckBox: getCheckboxState("second-partner-checkbox", "партнёр 2")
   };
 }
 
-function calculateRateAndEquivalentValue(amount, exchangeRates, isRupeesToCurrency=false) {
-  let rate = null;
-  let equivalentValue = 0;
-  let foundRate = false;
+function calculateLimitValues(rupees, exchangeRates, Rupees_to_Currency = false) {
+  const calculateLimit = (rupees) => {
+    const result = calculateRateAndEquivalentValue(rupees, exchangeRates, Rupees_to_Currency);
+    return { rupees, currencyAmount: result.equivalentValue, rate: result.rate };
+  };
+  
+  return {
+    low: calculateLimit(5000 * Math.floor(rupees / 5000)),
+    high: calculateLimit(5000 * Math.ceil(rupees / 5000))
+  };
+}
 
+
+
+function calculateEquivalentValue(amount, rate, isRupeesToCurrency) {
+  return isRupeesToCurrency ? amount / rate : Math.round(amount * rate);
+}
+
+function getMaxRate(exchangeRates) {
+  const maxLimit = Math.max(...Object.keys(exchangeRates));
+  return exchangeRates[maxLimit];
+}
+
+function calculateRateAndEquivalentValue(amount, exchangeRates, isRupeesToCurrency=false) {
   for (const [limit, exchangeRate] of Object.entries(exchangeRates)) {
     if (limit * exchangeRate >= amount) {
-      foundRate = true;
-      rate = exchangeRate;
-      equivalentValue = isRupeesToCurrency ? amount / rate : Math.round(amount * exchangeRate);
-      break;
+      const equivalentValue = calculateEquivalentValue(amount, exchangeRate, isRupeesToCurrency);
+      return { rate: exchangeRate, equivalentValue };
     }
   }
 
-  if (!foundRate) {
-    const maxLimit = Math.max(...Object.keys(exchangeRates));
-    const maxRate = exchangeRates[maxLimit];
-    equivalentValue = isRupeesToCurrency ? amount / maxRate : Math.round(amount * maxRate);
-    rate = maxRate;
-  }
-
-  return { rate, equivalentValue };
+  const maxRate = getMaxRate(exchangeRates);
+  const equivalentValue = calculateEquivalentValue(amount, maxRate, isRupeesToCurrency);
+  return { rate: maxRate, equivalentValue };
 }
 
 
@@ -118,6 +102,7 @@ function generateResponseMessage(amountUSDT, rate, rupees, limits, checkBoxes) {
 
   return `Стоимость: ${formattedUSDT} USDT\nКурс обмена: 1 USDT = ${rate} рупий\nПолучите: ${formattedRupees} рупий${checkBoxes.deliveryTimeCheckBox}\n\nМы принимаем оплату через Binance\n\n- - - -\nОбратите внимание, что курс обмена может измениться в любое время из-за экономических и политических факторов|${formattedUSDT} / ${rate} / ${formattedRupees} ${checkBoxes.onlineExchangeCheckBox} ${checkBoxes.atmCheckBox} ${checkBoxes.secondPartnerCheckBox}#${formattedLowUSDT} / ${limits.low.rate} / ${formattedLowRupees} ${checkBoxes.onlineExchangeCheckBox} ${checkBoxes.atmCheckBox} ${checkBoxes.secondPartnerCheckBox}_${formattedHighUSDT} / ${limits.high.rate} / ${formattedHighRupees} ${checkBoxes.onlineExchangeCheckBox} ${checkBoxes.atmCheckBox} ${checkBoxes.secondPartnerCheckBox}`;
 }
+
 
 
 function get_Rubles_to_Rupees(amountRubles, exchangeRatesStr) {
