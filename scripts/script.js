@@ -26,59 +26,6 @@ ids.forEach((id) => {
 
 form.addEventListener("submit", makeCalculations);
 
-function parseAmount(amount) {
-  const amountParsed = parseInt(amount);
-  if (isNaN(amountParsed) || amountParsed <= 0) {
-    return { valid: false };
-  }
-  return { valid: true, amount: amountParsed };
-}
-
-function calculateRubles(amount, exchangeRates) {
-  let rate = null;
-  let rubles = 0;
-  let foundRate = false;
-
-  for (const [limit, exchangeRate] of Object.entries(exchangeRates)) {
-    if (limit * exchangeRate >= amount) {
-      foundRate = true;
-      rate = exchangeRate;
-      rubles = amount / rate;
-      break;
-    }
-  }
-
-  if (!foundRate) {
-    const limits = Object.keys(exchangeRates);
-    const maxLimit = Math.max(...limits);
-    const maxRate = exchangeRates[maxLimit];
-    rubles = amount / maxRate;
-    rate = maxRate;
-  }
-
-  return { rubles, rate };
-}
-
-function calculateLowAndHighLimits(amount, exchangeRates) {
-  const low = 5000 * Math.floor(amount / 5000);
-  const high = 5000 * Math.ceil(amount / 5000);
-  const lowCalculation = calculateRubles(low, exchangeRates);
-  const highCalculation = calculateRubles(high, exchangeRates);
-
-  return {
-    low: {
-      rubles: Math.round(lowCalculation.rubles),
-      rate: lowCalculation.rate,
-      amount: low,
-    },
-    high: {
-      rubles: Math.round(highCalculation.rubles),
-      rate: highCalculation.rate,
-      amount: high,
-    },
-  };
-}
-
 function getCheckboxInfo() {
   let checkBoxesInfo = {};
 
@@ -107,16 +54,31 @@ function getCheckboxInfo() {
   return checkBoxesInfo;
 }
 
-function formatNumber(number) {
-  return number.toLocaleString("ru-RU");
-}
 
-function validateInput(amount) {
-  amount = parseInt(amount);
-  if (isNaN(amount) || amount <= 0) {
-    throw new Error("Invalid input");
+
+function calculateRubles(amount, exchangeRates) {
+  let rate = null;
+  let rubles = 0;
+  let foundRate = false;
+
+  for (const [limit, exchangeRate] of Object.entries(exchangeRates)) {
+    if (limit * exchangeRate >= amount) {
+      foundRate = true;
+      rate = exchangeRate;
+      rubles = amount / rate;
+      break;
+    }
   }
-  return amount;
+
+  if (!foundRate) {
+    const limits = Object.keys(exchangeRates);
+    const maxLimit = Math.max(...limits);
+    const maxRate = exchangeRates[maxLimit];
+    rubles = amount / maxRate;
+    rate = maxRate;
+  }
+
+  return { rubles, rate };
 }
 
 function getRateAndRupees(amount, exchangeRates) {
@@ -143,37 +105,6 @@ function getRateAndRupees(amount, exchangeRates) {
   return { rate, rupees };
 }
 
-function getMaxLimit(exchangeRates) {
-  const limits = Object.keys(exchangeRates);
-  return Math.max(...limits);
-}
-
-function getLimitRate(amount, exchangeRates) {
-  let rubles = 0;
-  let rate = 0;
-  let foundRate = false;
-
-  for (const [limit, exchangeRate] of Object.entries(exchangeRates)) {
-    if (limit * exchangeRate >= amount) {
-      foundRate = true;
-      rubles = amount / exchangeRate;
-      rate = exchangeRate;
-      break;
-    }
-  }
-
-  if (!foundRate) {
-    const maxLimit = getMaxLimit(exchangeRates);
-    const maxRate = exchangeRates[maxLimit];
-    rubles = amount / maxRate;
-    rate = maxRate;
-  }
-
-  rubles = Math.round(rubles);
-  return { rubles, rate };
-}
-
-// Calculate the rate and rupees for the given amount and rate limits
 function calculateRateAndRupees(amount, rateLimits) {
   let rate = null;
   let rupees = 0;
@@ -199,47 +130,124 @@ function calculateRateAndRupees(amount, rateLimits) {
   return { rate, rupees };
 }
 
-// Function to calculate the limit values
+
+
+function calculateLowAndHighLimits(amount, exchangeRates) {
+  const low = 5000 * Math.floor(amount / 5000);
+  const high = 5000 * Math.ceil(amount / 5000);
+  const lowCalculation = calculateRubles(low, exchangeRates);
+  const highCalculation = calculateRubles(high, exchangeRates);
+
+  return {
+    low: {
+      rubles: Math.round(lowCalculation.rubles),
+      rate: lowCalculation.rate,
+      amount: low,
+    },
+    high: {
+      rubles: Math.round(highCalculation.rubles),
+      rate: highCalculation.rate,
+      amount: high,
+    },
+  };
+}
+
+function calculateLimitValues(amountRupee, exchangeRates) {
+  const low = 5000 * Math.floor(amountRupee / 5000);
+  const high = 5000 * Math.ceil(amountRupee / 5000);
+
+  const lowResult = calculateEquivalentAndRate(low, exchangeRates);
+  const highResult = calculateEquivalentAndRate(high, exchangeRates);
+
+  return {
+    low: { USDT: lowResult.equivalentValue, rate: lowResult.rate, rupees: low },
+    high: { USDT: highResult.equivalentValue, rate: highResult.rate, rupees: high },
+  };
+}
+
 function calculateLimitValues(rupees, rateLimits) {
   const low = 5000 * Math.floor(rupees / 5000);
   const high = 5000 * Math.ceil(rupees / 5000);
 
-  const lowResult = calculateLimitForGivenRupees(low, rateLimits);
-  const highResult = calculateLimitForGivenRupees(high, rateLimits);
+  const lowResult = calculateEquivalentAndRate(low, rateLimits);
+  const highResult = calculateEquivalentAndRate(high, rateLimits);
 
   return {
-    low: { amount: low, USDT: lowResult.amount, rate: lowResult.rate },
-    high: { amount: high, USDT: highResult.amount, rate: highResult.rate },
+    low: { amount: low, USDT: lowResult.equivalentValue, rate: lowResult.rate },
+    high: { amount: high, USDT: highResult.equivalentValue, rate: highResult.rate },
   };
 }
 
-// Helper function to calculate the limit for a given amount of rupees
-function calculateLimitForGivenRupees(rupees, rateLimits) {
-  let amount = 0;
-  let rate = 0;
+
+
+// Calculate equivalent value and exchange rate for a given amount
+function calculateEquivalentAndRate(amount, exchangeRates, isAmountInRupees=true) {
+  let equivalentValue = 0;
+  let rate = null;
   let foundRate = false;
 
-  for (const [limit, exchangeRate] of Object.entries(rateLimits)) {
-    if (limit * exchangeRate >= rupees) {
+  for (const [limit, exchangeRate] of Object.entries(exchangeRates)) {
+    if (limit * exchangeRate >= amount) {
       foundRate = true;
-      amount = rupees / exchangeRate;
       rate = exchangeRate;
+      if (isAmountInRupees) {
+        equivalentValue = amount / rate;
+      } else {
+        equivalentValue = amount * rate;
+      }
       break;
     }
   }
 
   if (!foundRate) {
-    const maxLimit = Math.max(...Object.keys(rateLimits));
-    const maxRate = rateLimits[maxLimit];
+    const maxLimit = Math.max(...Object.keys(exchangeRates));
+    const maxRate = exchangeRates[maxLimit];
 
-    amount = rupees / maxRate;
+    if (isAmountInRupees) {
+      equivalentValue = amount / maxRate;
+    } else {
+      equivalentValue = amount * maxRate;
+    }
     rate = maxRate;
   }
 
-  amount = Math.round(amount);
+  equivalentValue = Math.round(equivalentValue);
 
-  return { amount, rate };
+  return { rate, equivalentValue };
 }
+
+
+
+
+function parseAmount(amount) {
+  const amountParsed = parseInt(amount);
+  if (isNaN(amountParsed) || amountParsed <= 0) {
+    return { valid: false };
+  }
+  return { valid: true, amount: amountParsed };
+}
+
+function validateInput(amount) {
+  amount = parseInt(amount);
+  if (isNaN(amount) || amount <= 0) {
+    throw new Error("Invalid input");
+  }
+  return amount;
+}
+
+
+function formatNumber(number) {
+  return number.toLocaleString("ru-RU");
+}
+
+function getMaxLimit(exchangeRates) {
+  const limits = Object.keys(exchangeRates);
+  return Math.max(...limits);
+}
+
+
+
+
 
 // Function to generate the response message
 function generateResponseMessage(amountUSDT, rate, rupees, limits, checkBoxes) {
@@ -253,57 +261,6 @@ function generateResponseMessage(amountUSDT, rate, rupees, limits, checkBoxes) {
   const formattedHighRupees = formatNumber(limits.high.amount);
 
   return `Стоимость: ${formattedUSDT} USDT\nКурс обмена: 1 USDT = ${rate} рупий\nПолучите: ${formattedRupees} рупий${checkBoxes.deliveryTimeCheckBox}\n\nМы принимаем оплату через Binance\n\n- - - -\nОбратите внимание, что курс обмена может измениться в любое время из-за экономических и политических факторов|${formattedUSDT} / ${rate} / ${formattedRupees} ${checkBoxes.onlineExchangeCheckBox} ${checkBoxes.atmCheckBox} ${checkBoxes.secondPartnerCheckBox}#${formattedLowUSDT} / ${limits.low.rate} / ${formattedLowRupees} ${checkBoxes.onlineExchangeCheckBox} ${checkBoxes.atmCheckBox} ${checkBoxes.secondPartnerCheckBox}_${formattedHighUSDT} / ${limits.high.rate} / ${formattedHighRupees} ${checkBoxes.onlineExchangeCheckBox} ${checkBoxes.atmCheckBox} ${checkBoxes.secondPartnerCheckBox}`;
-}
-
-function calculateRateAndUSDT(amountRupee, exchangeRates) {
-  let rate = null;
-  let foundRate = false;
-  let USDT = 0;
-
-  for (const [limit, exchangeRate] of Object.entries(exchangeRates)) {
-    if (limit * exchangeRate >= amountRupee) {
-      foundRate = true;
-      rate = exchangeRate;
-      USDT = amountRupee / rate;
-      break;
-    }
-  }
-
-  if (!foundRate) {
-    const maxLimit = Math.max(...Object.keys(exchangeRates));
-    const maxRate = exchangeRates[maxLimit];
-
-    USDT = amountRupee / maxRate;
-    rate = maxRate;
-  }
-
-  return { rate, USDT };
-}
-
-function calculateLimitValues(amountRupee, exchangeRates) {
-  const low = 5000 * Math.floor(amountRupee / 5000);
-  const high = 5000 * Math.ceil(amountRupee / 5000);
-
-  const lowResult = calculateRateAndUSDT(low, exchangeRates);
-  const highResult = calculateRateAndUSDT(high, exchangeRates);
-
-  return {
-    low: { USDT: lowResult.USDT, rate: lowResult.rate, rupees: low },
-    high: { USDT: highResult.USDT, rate: highResult.rate, rupees: high },
-  };
-}
-
-function generateResponseMessage(USDT, rate, amountRupee, limits, checkBoxes) {
-  const formattedUSDT = formatNumber(USDT);
-  const formattedRupees = formatNumber(amountRupee);
-
-  const formattedLowUSDT = formatNumber(limits.low.USDT);
-  const formattedLowRupees = formatNumber(limits.low.rupees);
-
-  const formattedHighUSDT = formatNumber(limits.high.USDT);
-  const formattedHighRupees = formatNumber(limits.high.rupees);
-
-  return `Стоимость: ${formattedUSDT} USDT\nКурс обмена: 1 USDT = ${rate} рупий\nПолучите: ${formattedRupees} рупий ${checkBoxes.deliveryTimeCheckBox}\n\nМы принимаем оплату через Binance\n\n- - - -\nОбратите внимание, что курс обмена может измениться в любое время из-за экономических и политических факторов|${formattedUSDT} / ${rate} / ${formattedRupees} ${checkBoxes.onlineExchangeCheckBox} ${checkBoxes.atmCheckBox} ${checkBoxes.secondPartnerCheckBox}#${formattedLowUSDT} / ${limits.low.rate} / ${formattedLowRupees} ${checkBoxes.onlineExchangeCheckBox} ${checkBoxes.atmCheckBox} ${checkBoxes.secondPartnerCheckBox}_${formattedHighUSDT} / ${limits.high.rate} / ${formattedHighRupees} ${checkBoxes.onlineExchangeCheckBox} ${checkBoxes.atmCheckBox} ${checkBoxes.secondPartnerCheckBox}`;
 }
 
 function get_rate_and_rubles(amountRupee, exchangeRatesStr) {
@@ -345,8 +302,8 @@ function get_rate_and_rupees(amountRubles, exchangeRatesStr) {
   const low = 5000 * Math.floor(rupees / 5000);
   const high = 5000 * Math.ceil(rupees / 5000);
 
-  const { rubles: lowRubles, rate: lowRate } = getLimitRate(low, exchangeRates);
-  const { rubles: highRubles, rate: highRate } = getLimitRate(
+  const { rate: lowRate, equivalentValue: lowRubles } = calculateEquivalentAndRate(low, exchangeRates);
+  const { rate: highRate, equivalentValue: highRubles } = calculateEquivalentAndRate(
     high,
     exchangeRates
   );
@@ -377,6 +334,7 @@ function get_rate_and_rupees(amountRubles, exchangeRatesStr) {
   )} ${onlineExchangeCheckBox} ${atmCheckBox} ${secondPartnerCheckBox}`;
 }
 
+
 function get_rate_and_USDT(amountUSDT, exchangeRatesStr) {
   amountUSDT = parseInt(amountUSDT);
 
@@ -402,12 +360,14 @@ function get_USDT_to_Rupees(amountRupee, exchangeRatesStr) {
   }
 
   const exchangeRates = parseExchangeRates(exchangeRatesStr, true);
-  const { rate, USDT } = calculateRateAndUSDT(amountRupee, exchangeRates);
+  const { rate: rate, equivalentValue: USDT } = calculateEquivalentAndRate(amountRupee, exchangeRates);
   const limits = calculateLimitValues(amountRupee, exchangeRates);
   const checkBoxes = getCheckboxInfo();
 
   return generateResponseMessage(USDT, rate, amountRupee, limits, checkBoxes);
 }
+
+
 
 function copyToClipboard(id) {
   const result = document.getElementById(id).innerText;
