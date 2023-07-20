@@ -54,27 +54,6 @@ function getCheckboxInfo() {
   return checkBoxesInfo;
 }
 
-
-function calculateLowAndHighLimits(amount, exchangeRates, Rupees_to_Currency = false) {
-  const low = 5000 * Math.floor(amount / 5000);
-  const high = 5000 * Math.ceil(amount / 5000);
-  const lowCalculation = calculateCurrencyAndRate(low, exchangeRates, Rupees_to_Currency);
-  const highCalculation = calculateCurrencyAndRate(high, exchangeRates, Rupees_to_Currency);
-
-  return {
-    low: {
-      rubles: Math.round(lowCalculation.currencyAmount),
-      rate: lowCalculation.rate,
-      amount: low,
-    },
-    high: {
-      rubles: Math.round(highCalculation.currencyAmount),
-      rate: highCalculation.rate,
-      amount: high,
-    },
-  };
-}
-
 function calculateLimitValues(rupees, exchangeRates, Rupees_to_Currency = false) {
   const low = 5000 * Math.floor(rupees / 5000);
   const high = 5000 * Math.ceil(rupees / 5000);
@@ -87,7 +66,6 @@ function calculateLimitValues(rupees, exchangeRates, Rupees_to_Currency = false)
     high: { rupees: high, currencyAmount: highResult.equivalentValue, rate: highResult.rate },
   };
 }
-
 
 function calculateRateAndEquivalentValue(amount, exchangeRates, isRupeesToCurrency=false) {
   let rate = null;
@@ -125,11 +103,6 @@ function parseAndValidateAmount(amount) {
 
 function formatNumber(number) {
   return number.toLocaleString("ru-RU");
-}
-
-function getMaxLimit(exchangeRates) {
-  const limits = Object.keys(exchangeRates);
-  return Math.max(...limits);
 }
 
 // Function to generate the response message
@@ -282,38 +255,47 @@ function parseExchangeRates(exchangeRatesStr, isUSDT = false) {
   return exchangeRates;
 }
 
+function formatNumber(num) {
+  return num.toLocaleString("ru", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+    useGrouping: true,
+  });
+}
+
+
+
+
+function makeCalculations() {
+  const inputs = getInputs();
+  const result = calculateCurrency(inputs);
+  const parsedResults = parseResult(result);
+  displayResults(parsedResults);
+}
+
+function getInputValueById(id) {
+  const input = document.getElementById(id);
+  return input.value;
+}
+
 function getInputs() {
-  const amountInput = document.getElementById("amount");
-  const amount = parseInt(amountInput.value);
-
-  const exchangeRatesInput = document.getElementById("exchange-rates");
-  const exchangeRates = exchangeRatesInput.value.trim();
-
-  const currencyInput = document.getElementById("currency");
-  const currency = currencyInput.value;
+  const amount = parseInt(getInputValueById("amount"));
+  const exchangeRates = getInputValueById("exchange-rates").trim();
+  const currency = getInputValueById("currency");
 
   return { amount, exchangeRates, currency };
 }
 
 function calculateCurrency({ amount, exchangeRates, currency }) {
-  let result;
-  switch (currency) {
-    case "Rupees-Rubles":
-      result = get_Rupees_to_Rubles(amount, exchangeRates);
-      break;
-    case "Rubles-Rupees":
-      result = get_Rubles_to_Rupees(amount, exchangeRates);
-      break;
-    case "Rupees-USDT":
-      result = get_Rupees_to_USDT(amount, exchangeRates);
-      break;
-    case "USDT-Rupees":
-      result = get_USDT_to_Rupees(amount, exchangeRates);
-      break;
-    default:
-      break;
-  }
-  return result;
+  const conversionFuncs = {
+    "Rupees-Rubles": get_Rupees_to_Rubles,
+    "Rubles-Rupees": get_Rubles_to_Rupees,
+    "Rupees-USDT": get_Rupees_to_USDT,
+    "USDT-Rupees": get_USDT_to_Rupees
+  };
+
+  const conversionFunc = conversionFuncs[currency];
+  return conversionFunc ? conversionFunc(amount, exchangeRates) : undefined;
 }
 
 function parseResult(result) {
@@ -346,19 +328,4 @@ function displayResults({
 
   const highResultDiv = document.getElementById("result_high");
   highResultDiv.innerText = stringHigh;
-}
-
-function makeCalculations() {
-  const inputs = getInputs();
-  const result = calculateCurrency(inputs);
-  const parsedResults = parseResult(result);
-  displayResults(parsedResults);
-}
-
-function formatNumber(num) {
-  return num.toLocaleString("ru", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-    useGrouping: true,
-  });
 }
