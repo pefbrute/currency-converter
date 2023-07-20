@@ -219,20 +219,12 @@ function calculateEquivalentAndRate(amount, exchangeRates, isAmountInRupees=true
 
 
 
-function parseAmount(amount) {
+function parseAndValidateAmount(amount) {
   const amountParsed = parseInt(amount);
   if (isNaN(amountParsed) || amountParsed <= 0) {
-    return { valid: false };
-  }
-  return { valid: true, amount: amountParsed };
-}
-
-function validateInput(amount) {
-  amount = parseInt(amount);
-  if (isNaN(amount) || amount <= 0) {
     throw new Error("Invalid input");
   }
-  return amount;
+  return { valid: true, amount: amountParsed };
 }
 
 
@@ -263,9 +255,10 @@ function generateResponseMessage(amountUSDT, rate, rupees, limits, checkBoxes) {
   return `Стоимость: ${formattedUSDT} USDT\nКурс обмена: 1 USDT = ${rate} рупий\nПолучите: ${formattedRupees} рупий${checkBoxes.deliveryTimeCheckBox}\n\nМы принимаем оплату через Binance\n\n- - - -\nОбратите внимание, что курс обмена может измениться в любое время из-за экономических и политических факторов|${formattedUSDT} / ${rate} / ${formattedRupees} ${checkBoxes.onlineExchangeCheckBox} ${checkBoxes.atmCheckBox} ${checkBoxes.secondPartnerCheckBox}#${formattedLowUSDT} / ${limits.low.rate} / ${formattedLowRupees} ${checkBoxes.onlineExchangeCheckBox} ${checkBoxes.atmCheckBox} ${checkBoxes.secondPartnerCheckBox}_${formattedHighUSDT} / ${limits.high.rate} / ${formattedHighRupees} ${checkBoxes.onlineExchangeCheckBox} ${checkBoxes.atmCheckBox} ${checkBoxes.secondPartnerCheckBox}`;
 }
 
-function get_rate_and_rubles(amountRupee, exchangeRatesStr) {
+
+function get_Rupees_to_Rubles(amountRupee, exchangeRatesStr) {
   // Проверка на невалидный ввод
-  const parsedAmount = parseAmount(amountRupee);
+  const parsedAmount = parseAndValidateAmount(amountRupee);
   if (!parsedAmount.valid) return "Invalid input";
 
   // Парсинг строки с курсами обмена
@@ -292,8 +285,10 @@ function get_rate_and_rubles(amountRupee, exchangeRatesStr) {
   return `Стоимость: ${formattedRubles} рублей\nКурс обмена: 1 рубль = ${calculation.rate} рупий\nПолучите: ${formattedRupees} рупий${checkBoxesInfo.deliveryTimeCheckBox}\n\nМы принимаем оплату через банковский перевод на Тинькофф и СБЕР\n\n- - - -\nОбратите внимание, что курс обмена может измениться в любое время из-за экономических и политических факторов|${formattedRubles} / ${calculation.rate} / ${formattedRupees} ${checkBoxesInfo.onlineExchangeCheckBox} ${checkBoxesInfo.atmCheckBox} ${checkBoxesInfo.secondPartnerCheckBox}#${formattedLowRubles} / ${limits.low.rate} / ${formattedLowRupees} ${checkBoxesInfo.onlineExchangeCheckBox} ${checkBoxesInfo.atmCheckBox} ${checkBoxesInfo.secondPartnerCheckBox}_${formattedHighRubles} / ${limits.high.rate} / ${formattedHighRupees} ${checkBoxesInfo.onlineExchangeCheckBox} ${checkBoxesInfo.atmCheckBox} ${checkBoxesInfo.secondPartnerCheckBox}`;
 }
 
-function get_rate_and_rupees(amountRubles, exchangeRatesStr) {
-  amountRubles = validateInput(amountRubles);
+function get_Rubles_to_Rupees(amountRubles, exchangeRatesStr) {
+  parsedAmount = parseAndValidateAmount(amountRubles);
+  if (!parsedAmount.valid) return "Invalid input";
+
 
   const exchangeRates = parseExchangeRates(exchangeRatesStr);
 
@@ -335,7 +330,7 @@ function get_rate_and_rupees(amountRubles, exchangeRatesStr) {
 }
 
 
-function get_rate_and_USDT(amountUSDT, exchangeRatesStr) {
+function get_USDT_to_Rupees(amountUSDT, exchangeRatesStr) {
   amountUSDT = parseInt(amountUSDT);
 
   if (amountUSDT <= 0) {
@@ -352,7 +347,7 @@ function get_rate_and_USDT(amountUSDT, exchangeRatesStr) {
   return generateResponseMessage(amountUSDT, rate, rupees, limits, checkBoxes);
 }
 
-function get_USDT_to_Rupees(amountRupee, exchangeRatesStr) {
+function get_Rupees_to_USDT(amountRupee, exchangeRatesStr) {
   amountRupee = parseInt(amountRupee);
 
   if (isNaN(amountRupee) || amountRupee <= 0) {
@@ -410,14 +405,14 @@ function getInputs() {
 function calculateCurrency({ amount, exchangeRates, currency }) {
   let result;
   switch (currency) {
-    case "rubles":
-      result = get_rate_and_rubles(amount, exchangeRates);
+    case "Rupees-Rubles":
+      result = get_Rupees_to_Rubles(amount, exchangeRates);
       break;
-    case "rupees":
-      result = get_rate_and_rupees(amount, exchangeRates);
+    case "Rubles-Rupees":
+      result = get_Rubles_to_Rupees(amount, exchangeRates);
       break;
-    case "USDT":
-      result = get_rate_and_USDT(amount, exchangeRates);
+    case "Rupees-USDT":
+      result = get_Rupees_to_USDT(amount, exchangeRates);
       break;
     case "USDT-Rupees":
       result = get_USDT_to_Rupees(amount, exchangeRates);
