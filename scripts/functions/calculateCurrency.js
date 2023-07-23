@@ -9,3 +9,5 @@ function calculateCurrency({ amount, exchangeRates, currency }) {
   const conversionFunc = conversionFuncs[currency];
   return conversionFunc ? conversionFunc(amount, exchangeRates) : undefined;
 }
+
+

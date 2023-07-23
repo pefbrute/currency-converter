@@ -22,3 +22,5 @@ function calculateRateAndEquivalentValue(
   );
   return { rate: maxRate, equivalentValue };
 }
+
+

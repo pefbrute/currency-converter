@@ -25,3 +25,5 @@ ids.forEach((id) => {
 });
 
 form.addEventListener("submit", makeCalculations);
+
+

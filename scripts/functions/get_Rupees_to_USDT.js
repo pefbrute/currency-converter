@@ -16,3 +16,5 @@ function get_Rupees_to_USDT(amountRupee, exchangeRatesStr) {
 
   return generateResponseMessage(USDT, rate, amountRupee, limits, checkBoxes);
 }
+
+

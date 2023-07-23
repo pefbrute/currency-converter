@@ -10,3 +10,5 @@ function copyToClipboard(id) {
 
   document.body.removeChild(tempTextArea);
 }
+
+

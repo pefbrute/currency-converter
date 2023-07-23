@@ -5,3 +5,5 @@ function parseAndValidateAmount(amount) {
   }
   return { valid: true, amount: amountParsed };
 }
+
+

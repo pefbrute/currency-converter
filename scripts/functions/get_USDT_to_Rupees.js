@@ -15,3 +15,5 @@ function get_USDT_to_Rupees(amountUSDT, exchangeRatesStr) {
 
   return generateResponseMessage(amountUSDT, rate, rupees, limits, checkBoxes);
 }
+
+

@@ -4,3 +4,5 @@ function makeCalculations() {
   const parsedResults = parseResult(result);
   displayResults(parsedResults);
 }
+
+

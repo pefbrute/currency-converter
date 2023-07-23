@@ -5,3 +5,5 @@ function getInputs() {
 
   return { amount, exchangeRates, currency };
 }
+
+

@@ -16,3 +16,5 @@ function displayResults({
   const highResultDiv = document.getElementById("result_high");
   highResultDiv.innerText = stringHigh;
 }
+
+

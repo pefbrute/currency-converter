@@ -25,42 +25,132 @@ ids.forEach((id) => {
 });
 
 form.addEventListener("submit", makeCalculations);
-function calculateCurrency({ amount, exchangeRates, currency }) {
-  const conversionFuncs = {
-    "Rupees-Rubles": get_Rupees_to_Rubles,
-    "Rubles-Rupees": get_Rubles_to_Rupees,
-    "Rupees-USDT": get_Rupees_to_USDT,
-    "USDT-Rupees": get_USDT_to_Rupees,
-  };
 
-  const conversionFunc = conversionFuncs[currency];
-  return conversionFunc ? conversionFunc(amount, exchangeRates) : undefined;
+
+
+
+class CurrencyExchangeService {
+  constructor(amount, exchangeRatesStr) {
+    this.amount = this.parseAndValidateAmount(amount);
+    this.exchangeRates = this.parseExchangeRates(exchangeRatesStr);
+  }
+
+  parseAndValidateAmount(amount) {
+    const amountParsed = parseInt(amount);
+    if (isNaN(amountParsed)) {
+      throw new Error("Invalid input");
+    }
+    return amountParsed;
+  }
+
+  parseExchangeRates(exchangeRatesStr) {
+    const exchangeRates = {};
+    const pattern = /^До (\d+)-(\d+\.\d+)$/gm;
+    let matches;
+    while ((matches = pattern.exec(exchangeRatesStr)) !== null) {
+      const limit = parseInt(matches[1]);
+      const rate = parseFloat(matches[2]);
+      exchangeRates[limit] = rate;
+    }
+    return exchangeRates;
+  }
+
+  calculateRateAndEquivalentValue(isRupeesToCurrency = false) {
+  if (isRupeesToCurrency) {
+    for (const [limit, exchangeRate] of Object.entries(this.exchangeRates)) {
+      if (limit * exchangeRate >= this.amount) {
+        const equivalentValue = this.calculateEquivalentValue(this.amount, exchangeRate, isRupeesToCurrency);
+        return { rate: exchangeRate, equivalentValue };
+      }
+    }
+  } else {
+    for (const [limit, exchangeRate] of Object.entries(this.exchangeRates)) {
+      if (this.amount < limit) {
+        const equivalentValue = this.calculateEquivalentValue(this.amount, exchangeRate, isRupeesToCurrency);
+        return { rate: exchangeRate, equivalentValue };
+      }
+    }
+  }
+
+    const maxRate = Math.max(...Object.values(this.exchangeRates));
+    const equivalentValue = this.calculateEquivalentValue(this.amount, maxRate, isRupeesToCurrency);
+    return { rate: maxRate, equivalentValue };
+  }
+
+  calculateEquivalentValue(amount, rate, isRupeesToCurrency = false) {
+    return isRupeesToCurrency ? amount / rate : amount * rate;
+  }
+
+  formatNumber(num) {
+    return num.toLocaleString("ru", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+      useGrouping: true,
+    });
+  }
 }
-function calculateEquivalentValue(amount, rate, isRupeesToCurrency) {
-  return isRupeesToCurrency ? amount / rate : Math.round(amount * rate);
-}function calculateLimitValues(
-  rupees,
-  exchangeRates,
-  Rupees_to_Currency = false
-) {
-  const calculateLimit = (rupees) => {
-    const result = calculateRateAndEquivalentValue(
-      rupees,
-      exchangeRates,
-      Rupees_to_Currency
-    );
-    return {
-      rupees,
-      currencyAmount: result.equivalentValue,
-      rate: result.rate,
-    };
-  };
 
+class ExchangeInformationService {
+  getCheckboxInfo() {
+    return {
+      deliveryTimeCheckBox: this.getCheckboxState("delivery-time-checkbox", "\n\nМы доставим рупии в течении 1-2 часов"),
+      onlineExchangeCheckBox: this.getCheckboxState("online-exchange-checkbox", "онлайн обмен через оператора"),
+      atmCheckBox: this.getCheckboxState("atm-checkbox", "АТМ"),
+      secondPartnerCheckBox: this.getCheckboxState("second-partner-checkbox", "партнёр 2"),
+    };
+  }
+
+  getCheckboxState(id, message) {
+    return document.getElementById(id).checked ? message : "";
+  }
+}
+
+
+
+
+function parseAndValidateAmount(amount) {
+  const amountParsed = parseInt(amount);
+  if (isNaN(amountParsed) || amountParsed <= 0) {
+    throw new Error("Invalid input");
+  }
+  return { valid: true, amount: amountParsed };
+}
+
+function parseExchangeRates(exchangeRatesStr, isUSDT = false) {
+  const exchangeRates = {};
+  const pattern = isUSDT ? /^До (\d+)-(\d+)$/gm : /^До (\d+)-(\d+\.\d+)$/gm;
+  let matches;
+  while ((matches = pattern.exec(exchangeRatesStr)) !== null) {
+    const limit = parseInt(matches[1]);
+    const rate = parseFloat(matches[2]);
+    exchangeRates[limit] = rate;
+  }
+  return exchangeRates;
+}
+
+function getCheckboxInfo() {
   return {
-    low: calculateLimit(5000 * Math.floor(rupees / 5000)),
-    high: calculateLimit(5000 * Math.ceil(rupees / 5000)),
+    deliveryTimeCheckBox: getCheckboxState(
+      "delivery-time-checkbox",
+      "\n\nМы доставим рупии в течении 1-2 часов"
+    ),
+    onlineExchangeCheckBox: getCheckboxState(
+      "online-exchange-checkbox",
+      "онлайн обмен через оператора"
+    ),
+    atmCheckBox: getCheckboxState("atm-checkbox", "АТМ"),
+    secondPartnerCheckBox: getCheckboxState(
+      "second-partner-checkbox",
+      "партнёр 2"
+    ),
   };
-}function calculateRateAndEquivalentValue(
+}
+
+function getCheckboxState(id, message) {
+  return document.getElementById(id).checked ? message : "";
+}
+
+function calculateRateAndEquivalentValue(
   amount,
   exchangeRates,
   isRupeesToCurrency = false
@@ -83,7 +173,65 @@ function calculateEquivalentValue(amount, rate, isRupeesToCurrency) {
     isRupeesToCurrency
   );
   return { rate: maxRate, equivalentValue };
-}function copyToClipboard(id) {
+}
+
+function formatNumber(num) {
+  return num.toLocaleString("ru", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+    useGrouping: true,
+  });
+}
+
+
+
+function calculateCurrency({ amount, exchangeRates, currency }) {
+  const conversionFuncs = {
+    "Rupees-Rubles": get_Rupees_to_Rubles,
+    "Rubles-Rupees": get_Rubles_to_Rupees,
+    "Rupees-USDT": get_Rupees_to_USDT,
+    "USDT-Rupees": get_USDT_to_Rupees,
+  };
+
+  const conversionFunc = conversionFuncs[currency];
+  return conversionFunc ? conversionFunc(amount, exchangeRates) : undefined;
+}
+
+
+function calculateEquivalentValue(amount, rate, isRupeesToCurrency) {
+  return isRupeesToCurrency ? amount / rate : Math.round(amount * rate);
+}
+
+
+function calculateLimitValues(
+  rupees,
+  exchangeRates,
+  Rupees_to_Currency = false
+) {
+  const calculateLimit = (rupees) => {
+    const result = calculateRateAndEquivalentValue(
+      rupees,
+      exchangeRates,
+      Rupees_to_Currency
+    );
+    return {
+      rupees,
+      currencyAmount: result.equivalentValue,
+      rate: result.rate,
+    };
+  };
+
+  return {
+    low: calculateLimit(5000 * Math.floor(rupees / 5000)),
+    high: calculateLimit(5000 * Math.ceil(rupees / 5000)),
+  };
+}
+
+
+
+
+
+function copyToClipboard(id) {
   const result = document.getElementById(id).innerText;
 
   const tempTextArea = document.createElement("textarea");
@@ -94,7 +242,10 @@ function calculateEquivalentValue(amount, rate, isRupeesToCurrency) {
   document.execCommand("copy");
 
   document.body.removeChild(tempTextArea);
-}function displayResults({
+}
+
+
+function displayResults({
   clientsString,
   stringCommon,
   stringLow,
@@ -112,13 +263,12 @@ function calculateEquivalentValue(amount, rate, isRupeesToCurrency) {
   const highResultDiv = document.getElementById("result_high");
   highResultDiv.innerText = stringHigh;
 }
-function formatNumber(num) {
-  return num.toLocaleString("ru", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-    useGrouping: true,
-  });
-}// Function to generate the response message
+
+
+
+
+
+// Function to generate the response message
 function generateResponseMessage(amountUSDT, rate, rupees, limits, checkBoxes) {
   const formattedUSDT = formatNumber(amountUSDT);
   const formattedRupees = formatNumber(rupees);
@@ -130,26 +280,12 @@ function generateResponseMessage(amountUSDT, rate, rupees, limits, checkBoxes) {
   const formattedHighRupees = formatNumber(limits.high.rupees);
 
   return `Стоимость: ${formattedUSDT} USDT\nКурс обмена: 1 USDT = ${rate} рупий\nПолучите: ${formattedRupees} рупий${checkBoxes.deliveryTimeCheckBox}\n\nМы принимаем оплату через Binance\n\n- - - -\nОбратите внимание, что курс обмена может измениться в любое время из-за экономических и политических факторов|${formattedUSDT} / ${rate} / ${formattedRupees} ${checkBoxes.onlineExchangeCheckBox} ${checkBoxes.atmCheckBox} ${checkBoxes.secondPartnerCheckBox}#${formattedLowUSDT} / ${limits.low.rate} / ${formattedLowRupees} ${checkBoxes.onlineExchangeCheckBox} ${checkBoxes.atmCheckBox} ${checkBoxes.secondPartnerCheckBox}_${formattedHighUSDT} / ${limits.high.rate} / ${formattedHighRupees} ${checkBoxes.onlineExchangeCheckBox} ${checkBoxes.atmCheckBox} ${checkBoxes.secondPartnerCheckBox}`;
-}function getCheckboxInfo() {
-  return {
-    deliveryTimeCheckBox: getCheckboxState(
-      "delivery-time-checkbox",
-      "\n\nМы доставим рупии в течении 1-2 часов"
-    ),
-    onlineExchangeCheckBox: getCheckboxState(
-      "online-exchange-checkbox",
-      "онлайн обмен через оператора"
-    ),
-    atmCheckBox: getCheckboxState("atm-checkbox", "АТМ"),
-    secondPartnerCheckBox: getCheckboxState(
-      "second-partner-checkbox",
-      "партнёр 2"
-    ),
-  };
 }
-function getCheckboxState(id, message) {
-  return document.getElementById(id).checked ? message : "";
-}
+
+
+
+
+
 function getInputs() {
   const amount = parseInt(getInputValueById("amount"));
   const exchangeRates = getInputValueById("exchange-rates").trim();
@@ -157,58 +293,43 @@ function getInputs() {
 
   return { amount, exchangeRates, currency };
 }
+
+
 function getInputValueById(id) {
   const input = document.getElementById(id);
   return input.value;
 }
+
+
 function getMaxRate(exchangeRates) {
   const maxLimit = Math.max(...Object.keys(exchangeRates));
   return exchangeRates[maxLimit];
-}function get_Rubles_to_Rupees(amountRubles, exchangeRatesStr) {
-  parsedAmount = parseAndValidateAmount(amountRubles);
+}
 
-  if (!parsedAmount.valid) return "Invalid input";
 
-  const exchangeRates = parseExchangeRates(exchangeRatesStr);
+function get_Rubles_to_Rupees(amountRubles, exchangeRatesStr) {
+  const currencyExchangeService = new CurrencyExchangeService(amountRubles, exchangeRatesStr);
+  const exchangeInformationService = new ExchangeInformationService();
 
-  const { rate, equivalentValue: rupees } = calculateRateAndEquivalentValue(
-    amountRubles,
-    exchangeRates
-  );
+  const { rate, equivalentValue: rupees } = currencyExchangeService.calculateRateAndEquivalentValue();
 
   const low = 5000 * Math.floor(rupees / 5000);
   const high = 5000 * Math.ceil(rupees / 5000);
 
-  const { rate: lowRate, equivalentValue: lowRubles } =
-    calculateRateAndEquivalentValue(low, exchangeRates, true);
-  const { rate: highRate, equivalentValue: highRubles } =
-    calculateRateAndEquivalentValue(high, exchangeRates, true);
+  // Construct new currency exchange services for low and high amounts
+  const lowCurrencyExchangeService = new CurrencyExchangeService(low, exchangeRatesStr);
+  const highCurrencyExchangeService = new CurrencyExchangeService(high, exchangeRatesStr);
 
-  const {
-    deliveryTimeCheckBox,
-    onlineExchangeCheckBox,
-    atmCheckBox,
-    secondPartnerCheckBox,
-  } = getCheckboxInfo();
+  const { rate: lowRate, equivalentValue: lowRubles } = lowCurrencyExchangeService.calculateRateAndEquivalentValue(true);
+  const { rate: highRate, equivalentValue: highRubles } = highCurrencyExchangeService.calculateRateAndEquivalentValue(true);
 
-  return `Стоимость: ${formatNumber(
-    amountRubles
-  )} рублей\nКурс обмена: 1 рубль = ${rate} рупий\nПолучите: ${formatNumber(
-    rupees
-  )} рупий${deliveryTimeCheckBox}\n\nМы принимаем оплату через банковский перевод на Тинькофф и СБЕР\n\n- - - -\nОбратите внимание, что курс обмена может измениться в любое время из-за экономических и политических факторов|${formatNumber(
-    amountRubles
-  )} / ${rate} / ${formatNumber(
-    rupees
-  )} ${onlineExchangeCheckBox} ${atmCheckBox} ${secondPartnerCheckBox}#${formatNumber(
-    lowRubles
-  )} / ${lowRate} / ${formatNumber(
-    low
-  )} ${onlineExchangeCheckBox} ${atmCheckBox} ${secondPartnerCheckBox}_${formatNumber(
-    highRubles
-  )} / ${highRate} / ${formatNumber(
-    high
-  )} ${onlineExchangeCheckBox} ${atmCheckBox} ${secondPartnerCheckBox}`;
-}function get_Rupees_to_Rubles(amountRupee, exchangeRatesStr) {
+  const { deliveryTimeCheckBox, onlineExchangeCheckBox, atmCheckBox, secondPartnerCheckBox } = exchangeInformationService.getCheckboxInfo();
+
+  return `Стоимость: ${currencyExchangeService.formatNumber(amountRubles)} рублей\nКурс обмена: 1 рубль = ${rate} рупий\nПолучите: ${currencyExchangeService.formatNumber(rupees)} рупий${deliveryTimeCheckBox}\n\nМы принимаем оплату через банковский перевод на Тинькофф и СБЕР\n\n- - - -\nОбратите внимание, что курс обмена может измениться в любое время из-за экономических и политических факторов|${currencyExchangeService.formatNumber(amountRubles)} / ${rate} / ${currencyExchangeService.formatNumber(rupees)} ${onlineExchangeCheckBox} ${atmCheckBox} ${secondPartnerCheckBox}#${lowCurrencyExchangeService.formatNumber(lowRubles)} / ${lowRate} / ${lowCurrencyExchangeService.formatNumber(low)} ${onlineExchangeCheckBox} ${atmCheckBox} ${secondPartnerCheckBox}_${highCurrencyExchangeService.formatNumber(highRubles)} / ${highRate} / ${highCurrencyExchangeService.formatNumber(high)} ${onlineExchangeCheckBox} ${atmCheckBox} ${secondPartnerCheckBox}`;
+}
+
+
+function get_Rupees_to_Rubles(amountRupee, exchangeRatesStr) {
   // Проверка на невалидный ввод
   const parsedAmount = parseAndValidateAmount(amountRupee);
   if (!parsedAmount.valid) return "Invalid input";
@@ -239,7 +360,10 @@ function getMaxRate(exchangeRates) {
 
   // Возвращение строки с результатами
   return `Стоимость: ${formattedRubles} рублей\nКурс обмена: 1 рубль = ${calculation.rate} рупий\nПолучите: ${formattedRupees} рупий${checkBoxesInfo.deliveryTimeCheckBox}\n\nМы принимаем оплату через банковский перевод на Тинькофф и СБЕР\n\n- - - -\nОбратите внимание, что курс обмена может измениться в любое время из-за экономических и политических факторов|${formattedRubles} / ${calculation.rate} / ${formattedRupees} ${checkBoxesInfo.onlineExchangeCheckBox} ${checkBoxesInfo.atmCheckBox} ${checkBoxesInfo.secondPartnerCheckBox}#${formattedLowRubles} / ${limits.low.rate} / ${formattedLowRupees} ${checkBoxesInfo.onlineExchangeCheckBox} ${checkBoxesInfo.atmCheckBox} ${checkBoxesInfo.secondPartnerCheckBox}_${formattedHighRubles} / ${limits.high.rate} / ${formattedHighRupees} ${checkBoxesInfo.onlineExchangeCheckBox} ${checkBoxesInfo.atmCheckBox} ${checkBoxesInfo.secondPartnerCheckBox}`;
-}function get_Rupees_to_USDT(amountRupee, exchangeRatesStr) {
+}
+
+
+function get_Rupees_to_USDT(amountRupee, exchangeRatesStr) {
   amountRupee = parseInt(amountRupee);
 
   if (isNaN(amountRupee) || amountRupee <= 0) {
@@ -256,7 +380,10 @@ function getMaxRate(exchangeRates) {
   const checkBoxes = getCheckboxInfo();
 
   return generateResponseMessage(USDT, rate, amountRupee, limits, checkBoxes);
-}function get_USDT_to_Rupees(amountUSDT, exchangeRatesStr) {
+}
+
+
+function get_USDT_to_Rupees(amountUSDT, exchangeRatesStr) {
   amountUSDT = parseInt(amountUSDT);
 
   if (amountUSDT <= 0) {
@@ -272,28 +399,23 @@ function getMaxRate(exchangeRates) {
   const checkBoxes = getCheckboxInfo();
 
   return generateResponseMessage(amountUSDT, rate, rupees, limits, checkBoxes);
-}function makeCalculations() {
+}
+
+
+function makeCalculations() {
   const inputs = getInputs();
   const result = calculateCurrency(inputs);
   const parsedResults = parseResult(result);
   displayResults(parsedResults);
-}function parseAndValidateAmount(amount) {
-  const amountParsed = parseInt(amount);
-  if (isNaN(amountParsed) || amountParsed <= 0) {
-    throw new Error("Invalid input");
-  }
-  return { valid: true, amount: amountParsed };
-}function parseExchangeRates(exchangeRatesStr, isUSDT = false) {
-  const exchangeRates = {};
-  const pattern = isUSDT ? /^До (\d+)-(\d+)$/gm : /^До (\d+)-(\d+\.\d+)$/gm;
-  let matches;
-  while ((matches = pattern.exec(exchangeRatesStr)) !== null) {
-    const limit = parseInt(matches[1]);
-    const rate = parseFloat(matches[2]);
-    exchangeRates[limit] = rate;
-  }
-  return exchangeRates;
 }
+
+
+
+
+
+
+
+
 function parseResult(result) {
   const lastVrtclLnIndex = result.lastIndexOf("|");
   const lastGateIndex = result.lastIndexOf("#");
@@ -306,3 +428,5 @@ function parseResult(result) {
 
   return { clientsString, stringCommon, stringLow, stringHigh };
 }
+
+

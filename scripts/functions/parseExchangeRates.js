@@ -9,3 +9,5 @@ function parseExchangeRates(exchangeRatesStr, isUSDT = false) {
   }
   return exchangeRates;
 }
+
+

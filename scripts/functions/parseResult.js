@@ -10,3 +10,5 @@ function parseResult(result) {
 
   return { clientsString, stringCommon, stringLow, stringHigh };
 }
+
+

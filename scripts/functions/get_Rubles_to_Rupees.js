@@ -43,3 +43,5 @@ function get_Rubles_to_Rupees(amountRubles, exchangeRatesStr) {
     high
   )} ${onlineExchangeCheckBox} ${atmCheckBox} ${secondPartnerCheckBox}`;
 }
+
+
